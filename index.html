@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Le Jeu Inutile - 50 Niveaux</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,sans-serif;background:#f5f5f0;color:#1a1a1a;min-height:100vh;display:flex;align-items:flex-start;justify-content:center;padding:2rem 1rem}
+#app{width:100%;max-width:520px}
+h1{font-size:28px;font-weight:600;text-align:center;margin-bottom:4px}
+.sub{font-size:14px;color:#666;text-align:center;margin-bottom:1.5rem}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:1rem}
+.sc{background:#fff;border-radius:10px;border:1px solid #e5e5e5;padding:10px;text-align:center}
+.sl{font-size:11px;color:#888;margin-bottom:3px}
+.sv{font-size:18px;font-weight:600;color:#1a1a1a}
+.level-badge{text-align:center;margin-bottom:.75rem}
+.lb{display:inline-block;background:#e8f5f0;color:#0f6e56;font-size:12px;padding:4px 14px;border-radius:8px;font-weight:500}
+#zone{background:#fff;border:1px solid #e5e5e5;border-radius:14px;padding:1.5rem;min-height:200px;margin-bottom:1rem}
+.ztitle{font-size:17px;font-weight:600;color:#1a1a1a;margin-bottom:6px;text-align:center}
+.zdesc{font-size:13px;color:#666;text-align:center;margin-bottom:1.25rem}
+.btn-row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:.5rem}
+button{padding:9px 20px;border-radius:9px;border:1px solid #ddd;background:#fff;color:#1a1a1a;font-size:13px;cursor:pointer;transition:background .12s}
+button:hover{background:#f0f0ea}
+button.ok{background:#1D9E75;color:#fff;border-color:#1D9E75}
+button.ok:hover{background:#0f6e56}
+#msg{text-align:center;font-size:14px;font-weight:500;min-height:24px;margin-bottom:.75rem;color:#1a1a1a}
+.prog-wrap{height:7px;background:#e5e5e5;border-radius:4px;margin-bottom:.75rem;overflow:hidden}
+.prog-bar{height:7px;background:#1D9E75;border-radius:4px;transition:width .4s}
+.inutile-widget{display:flex;flex-direction:column;align-items:center;gap:12px}
+.big-btn{font-size:26px;padding:18px 30px;border-radius:14px;border:1px solid #ddd;background:#f5f5f0;cursor:pointer;transition:transform .1s;font-family:system-ui,sans-serif}
+.big-btn:active{transform:scale(.95)}
+.slider-row{display:flex;align-items:center;gap:10px;width:90%}
+.slider-row label{font-size:13px;color:#666;white-space:nowrap}
+.slider-row input[type=range]{flex:1;accent-color:#1D9E75}
+.slider-row span{font-size:13px;font-weight:600;min-width:30px;color:#1a1a1a}
+.color-swatch{width:38px;height:38px;border-radius:50%;border:2px solid transparent;cursor:pointer;transition:transform .1s}
+.color-swatch:active{transform:scale(.9)}
+.drag-zone{border:2px dashed #ddd;border-radius:10px;padding:18px;text-align:center;font-size:13px;color:#888;min-height:80px;display:flex;align-items:center;justify-content:center;cursor:pointer;user-select:none;width:90%}
+.drag-zone:hover{border-color:#1D9E75;color:#1D9E75}
+.typing-input{width:90%;padding:9px 12px;border-radius:9px;border:1px solid #ddd;background:#fff;color:#1a1a1a;font-size:14px;font-family:system-ui,sans-serif}
+.typing-input:focus{outline:none;border-color:#1D9E75}
+.award{font-size:60px;text-align:center;padding:12px}
+.hint-text{font-size:12px;color:#888;margin-top:4px}
+.click-cnt{font-size:13px;color:#888;margin-bottom:2px;font-weight:500}
+</style>
+</head>
+<body>
+<div id="app">
+  <h1>Le Jeu Inutile</h1>
+  <p class="sub" id="flavor">Bienvenue dans l'inutilite totale</p>
+  <div class="stats">
+    <div class="sc"><div class="sl">Niveau</div><div class="sv" id="s-lv">1</div></div>
+    <div class="sc"><div class="sl">Inutilite</div><div class="sv" id="s-ut">0%</div></div>
+    <div class="sc"><div class="sl">Clics</div><div class="sv" id="s-cl">0</div></div>
+    <div class="sc"><div class="sl">Trophees</div><div class="sv" id="s-tr">0</div></div>
+  </div>
+  <div class="level-badge"><span class="lb" id="lbadge">Niveau 1 / 50</span></div>
+  <div class="prog-wrap"><div class="prog-bar" id="prog" style="width:2%"></div></div>
+  <div id="zone"></div>
+  <div id="msg"></div>
+  <div class="btn-row" id="nav-row">
+    <button id="btn-prev" onclick="prevLevel()" style="display:none">Precedent</button>
+    <button id="btn-skip" onclick="skipLevel()">Passer</button>
+  </div>
+</div>
+<script>
+let currentLevel=0,totalClics=0,trophies=0,levelsDone=new Array(50).fill(false),state={};
+const LEVELS=[
+  {t:"Appuie sur le bouton",d:"Ce bouton ne fait rien. Appuie quand meme.",type:"big_button",label:"NE RIEN FAIRE",clicks:1,win_msg:"Bravo ! Tu as appuye sur un bouton inutile.",flavor:"Niveau 1 : La naissance de l'inutile"},
+  {t:"Deplace ce slider vers nulle part",d:"Regles ce slider sur n'importe quelle valeur. Ca ne changera rien.",type:"slider",label:"Importance de ce slider",min:0,max:100,target_any:true,win_msg:"Parfait. Absolument rien n'a change.",flavor:"Niveau 2 : Le slider de l'indifference"},
+  {t:"Choisis ta couleur preferee",d:"Ta reponse sera ignoree.",type:"colors",colors:["#E24B4A","#1D9E75","#378ADD","#EF9F27","#7F77DD","#D4537E"],win_msg:"Choix note. Choix ignore.",flavor:"Niveau 3 : La palette du neant"},
+  {t:"Appuie 5 fois",d:"Appuie sur le bouton exactement 5 fois. Pour rien.",type:"big_button",label:"APPUYER ICI",clicks:5,win_msg:"5 clics parfaitement gaspilles !",flavor:"Niveau 4 : La repetition vaine"},
+  {t:"Ecris ton prenom",d:"Ecris n'importe quoi. On s'en fiche.",type:"typing",placeholder:"Ton prenom...",min_chars:2,win_msg:"Magnifique. Ce texte sera oublie immediatement.",flavor:"Niveau 5 : L'identite inutile"},
+  {t:"Clique sur la zone vide",d:"Clique quelque part dans cette zone. Elle est vide expres.",type:"drag_zone",label:"Zone vide (cliquer ici)",win_msg:"Tu as clique dans le vide. Magnifique.",flavor:"Niveau 6 : Le clic du neant"},
+  {t:"Appuie 10 fois",d:"10 clics pour rien du tout.",type:"big_button",label:"CONTINUER A APPUYER",clicks:10,win_msg:"10 clics. 0 utilite. Record personnel.",flavor:"Niveau 7 : La perseverance absurde"},
+  {t:"Le slider de l'ennui",d:"Mets le slider exactement au milieu. Ou pas.",type:"slider",label:"Niveau d'ennui",min:0,max:100,target_any:true,win_msg:"Tu as regle ton ennui. Il reste le meme.",flavor:"Niveau 8 : L'equilibre inutile"},
+  {t:"Choisis 3 couleurs",d:"Clique sur 3 couleurs. Dans n'importe quel ordre.",type:"colors_multi",colors:["#E24B4A","#1D9E75","#378ADD","#EF9F27","#7F77DD","#D4537E","#5DCAA5","#D85A30"],needed:3,win_msg:"3 couleurs selectionnees. 0 consequence.",flavor:"Niveau 9 : La trilogie chromatique"},
+  {t:"Ecris 'rien'",d:"Ecris exactement le mot : rien",type:"typing_exact",placeholder:"Ecris rien...",exact:"rien",win_msg:"Tu as ecrit rien. C'est exactement ce que c'est.",flavor:"Niveau 10 : La philosophie du vide"},
+  {t:"Appuie 15 fois",d:"Encore des clics inutiles. Tu commences a avoir l'habitude.",type:"big_button",label:"ENCORE ET ENCORE",clicks:15,win_msg:"15 clics de pure inutilite. Tu maitrises.",flavor:"Niveau 11 : L'expert du rien"},
+  {t:"Le grand slider",d:"Mets ce slider au maximum. Parce que pourquoi pas.",type:"slider",label:"Puissance inutile",min:0,max:100,target:100,tolerance:5,win_msg:"Puissance maximale ! Rien n'a change.",flavor:"Niveau 12 : La puissance du neant"},
+  {t:"Appuie sur TOUS les boutons",d:"Appuie sur chaque bouton dans cette grille.",type:"grid_buttons",cols:3,rows:2,win_msg:"Tous les boutons presses. Tous inutiles.",flavor:"Niveau 13 : L'archipel de boutons"},
+  {t:"Ecris une pensee profonde",d:"Ecris au moins 10 caracteres. Ce sera perdu a jamais.",type:"typing",placeholder:"Ta pensee la plus profonde...",min_chars:10,win_msg:"Profond. Oublie. Au revoir.",flavor:"Niveau 14 : Le philosophe ephemere"},
+  {t:"Clique 3 fois dans la zone",d:"Clique 3 fois dans la zone vide.",type:"drag_zone_clicks",needed:3,label:"Zone a cliquer (3 fois)",win_msg:"3 clics dans le vide. Tu es doue.",flavor:"Niveau 15 : Le triple vide"},
+  {t:"Appuie 20 fois",d:"Vingt. Clics. Inutiles.",type:"big_button",label:"APPUYER ENCORE",clicks:20,win_msg:"20 clics ! Tu es un professionnel du rien.",flavor:"Niveau 16 : Le marathon inutile commence"},
+  {t:"Mets le slider au minimum",d:"Tout en bas. Jusqu'au zero absolu.",type:"slider",label:"Esperance de sens",min:0,max:100,target:0,tolerance:5,win_msg:"Zero sens. C'est parfait.",flavor:"Niveau 17 : Le zero cosmique"},
+  {t:"Choisis 5 couleurs",d:"Cinq couleurs. N'importe lesquelles.",type:"colors_multi",colors:["#E24B4A","#1D9E75","#378ADD","#EF9F27","#7F77DD","#D4537E","#5DCAA5","#D85A30"],needed:5,win_msg:"Palette complete. Toujours inutile.",flavor:"Niveau 18 : La quintessence coloree"},
+  {t:"Ecris 'inutile'",d:"Le mot exact. Tout en minuscules.",type:"typing_exact",placeholder:"Ecris inutile...",exact:"inutile",win_msg:"Tu l'as dit toi-meme.",flavor:"Niveau 19 : L'auto-proclamation"},
+  {t:"Grille 4x3 de boutons",d:"Appuie sur tous les boutons de la grille.",type:"grid_buttons",cols:4,rows:3,win_msg:"12 boutons, 12 neants. Champion.",flavor:"Niveau 20 : Le quart du chemin inutile !"},
+  {t:"Appuie 25 fois",d:"Un quart de siecle de clics.",type:"big_button",label:"PERSEVERER",clicks:25,win_msg:"25 clics. Tu es dedie a l'inutile.",flavor:"Niveau 21 : La dedicace"},
+  {t:"Le slider du milieu",d:"Exactement 50. Pile au milieu.",type:"slider",label:"Equilibre universel",min:0,max:100,target:50,tolerance:3,win_msg:"50 exact. L'equilibre du rien.",flavor:"Niveau 22 : L'equilibre parfait"},
+  {t:"Clique 5 fois dans la zone",d:"Cinq clics dans l'espace vide.",type:"drag_zone_clicks",needed:5,label:"Zone du vide (5 clics)",win_msg:"5 clics dans rien. Magnifique maitrise.",flavor:"Niveau 23 : Le quintuple vide"},
+  {t:"Ecris ton excuse",d:"Pourquoi joues-tu a ce jeu ? Min 15 caracteres.",type:"typing",placeholder:"Mon excuse est...",min_chars:15,win_msg:"Excuse notee. Excuse rejetee.",flavor:"Niveau 24 : La justification vaine"},
+  {t:"Toutes les couleurs",d:"Clique sur TOUTES les couleurs.",type:"colors_multi",colors:["#E24B4A","#1D9E75","#378ADD","#EF9F27","#7F77DD","#D4537E"],needed:6,win_msg:"Toutes les couleurs du neant collectees.",flavor:"Niveau 25 : La moitie du chemin !"},
+  {t:"Appuie 30 fois",d:"Trente clics. Tu y es presque... a rien.",type:"big_button",label:"NE PAS ABANDONNER",clicks:30,win_msg:"30 clics ! L'inutilite est ton metier.",flavor:"Niveau 26 : Le professionnel"},
+  {t:"Slider aleatoire",d:"Mets le slider sur 33. Exactement.",type:"slider",label:"Le nombre magique inutile",min:0,max:100,target:33,tolerance:2,win_msg:"33 ! Nombre completement inutile atteint.",flavor:"Niveau 27 : Le nombre sacre"},
+  {t:"Grille 5x3",d:"Quinze boutons. Quinze clics. Zero raison.",type:"grid_buttons",cols:5,rows:3,win_msg:"15 boutons maitrises. Legende vivante.",flavor:"Niveau 28 : La grille des dieux inutiles"},
+  {t:"Ecris 'je perds mon temps'",d:"Admets-le. Ecris exactement : je perds mon temps",type:"typing_exact",placeholder:"Admets-le...",exact:"je perds mon temps",win_msg:"Au moins tu es honnete.",flavor:"Niveau 29 : La verite crue"},
+  {t:"Appuie 35 fois",d:"Trente-cinq clics vers l'infini inutile.",type:"big_button",label:"CONTINUER QUAND MEME",clicks:35,win_msg:"35 ! Tu refuses d'arreter. Admirable.",flavor:"Niveau 30 : L'obstination"},
+  {t:"Clique 7 fois dans la zone",d:"Sept clics dans le vide absolu.",type:"drag_zone_clicks",needed:7,label:"Abime du vide (7 clics)",win_msg:"7 clics dans rien. L'artiste.",flavor:"Niveau 31 : Le septuple neant"},
+  {t:"Slider sur 77",d:"Precis a 2 pres. 77.",type:"slider",label:"L'age du capitaine inutile",min:0,max:100,target:77,tolerance:2,win_msg:"77 ! Chiffre portebonheur. Bon pour rien.",flavor:"Niveau 32 : Le double sept"},
+  {t:"Ecris une blague",d:"Raconte une blague. Min 20 caracteres. Elle sera ignoree.",type:"typing",placeholder:"Ma blague...",min_chars:20,win_msg:"Ha. Ha. Ha. Blague supprimee.",flavor:"Niveau 33 : Le comique sans public"},
+  {t:"Appuie 40 fois",d:"40 clics. Tu vois le bout de l'inutilite.",type:"big_button",label:"ENCORE 40 FOIS",clicks:40,win_msg:"40 ! Tu es au 34e niveau d'un jeu inutile.",flavor:"Niveau 34 : Le niveau 34"},
+  {t:"Grille 4x4",d:"16 boutons. La grille ultime.",type:"grid_buttons",cols:4,rows:4,win_msg:"16 boutons ! Dieu de l'inutile.",flavor:"Niveau 35 : La grille parfaite"},
+  {t:"Slider sur 1",d:"Presque zero mais pas zero. Sur 1.",type:"slider",label:"Une toute petite inutilite",min:0,max:100,target:1,tolerance:1,win_msg:"1 sur 100 d'utilite. Progres !",flavor:"Niveau 36 : Le progres infime"},
+  {t:"Clique 10 fois dans la zone",d:"Dix clics dans le vide. Tu connais.",type:"drag_zone_clicks",needed:10,label:"Grand vide (10 clics)",win_msg:"10 clics dans rien. Magistral.",flavor:"Niveau 37 : Le vide maitrise"},
+  {t:"Ecris 'encore'",d:"Juste ce mot. encore.",type:"typing_exact",placeholder:"...",exact:"encore",win_msg:"Encore. Et encore. Et encore.",flavor:"Niveau 38 : La repetition infinie"},
+  {t:"Appuie 45 fois",d:"45 clics. Presque la fin de rien.",type:"big_button",label:"PRESQUE FINI",clicks:45,win_msg:"45 ! Tu sens la victoire inutile proche.",flavor:"Niveau 39 : L'avant-avant-derniere ligne droite"},
+  {t:"Toutes les 8 couleurs",d:"Les 8 couleurs. Le bouquet final de l'inutile.",type:"colors_multi",colors:["#E24B4A","#1D9E75","#378ADD","#EF9F27","#7F77DD","#D4537E","#5DCAA5","#D85A30"],needed:8,win_msg:"8 couleurs du neant. Collection complete.",flavor:"Niveau 40 : La collection totale"},
+  {t:"Slider sur 99",d:"Presque 100 mais pas 100. Sur 99.",type:"slider",label:"Presque l'utilite",min:0,max:100,target:99,tolerance:1,win_msg:"Si pres de l'utilite. Rate.",flavor:"Niveau 41 : L'echec du presque"},
+  {t:"Grille 5x4",d:"20 boutons. L'avant-derniere grille.",type:"grid_buttons",cols:5,rows:4,win_msg:"20 boutons ! Tu es une machine a rien.",flavor:"Niveau 42 : La reponse inutile a tout"},
+  {t:"Ecris ton bilan",d:"Qu'as-tu appris ? Min 25 caracteres.",type:"typing",placeholder:"Ce que j'ai appris...",min_chars:25,win_msg:"Bilan note. Bilan inutile.",flavor:"Niveau 43 : L'introspection vaine"},
+  {t:"Clique 15 fois dans la zone",d:"15 clics. L'apogee du vide.",type:"drag_zone_clicks",needed:15,label:"Abime infini (15 clics)",win_msg:"15 clics dans rien. Maestro du vide.",flavor:"Niveau 44 : Le maestro"},
+  {t:"Appuie 50 fois",d:"CINQUANTE CLICS. L'avant-dernier defi.",type:"big_button",label:"L'AVANT DERNIER EFFORT",clicks:50,win_msg:"50 clics ! Penultieme niveau passe !",flavor:"Niveau 45 : La penultieme inutilite"},
+  {t:"Slider sur 42",d:"La reponse a la grande question. 42.",type:"slider",label:"Sens de la vie",min:0,max:100,target:42,tolerance:2,win_msg:"42. La reponse ultime. Toujours inutile.",flavor:"Niveau 46 : La grande reponse"},
+  {t:"Ecris 'je suis un champion'",d:"Dis-le fort. Ecris exactement : je suis un champion",type:"typing_exact",placeholder:"Dis-le...",exact:"je suis un champion",win_msg:"Oui. Champion de l'inutile.",flavor:"Niveau 47 : La proclamation finale"},
+  {t:"La grille finale 5x5",d:"25 boutons. La grille ultime de l'inutile.",type:"grid_buttons",cols:5,rows:5,win_msg:"25 boutons ! La grille ultime conquise !",flavor:"Niveau 48 : La grille des legendes"},
+  {t:"Clique 20 fois dans la zone",d:"20 clics dans le vide. L'avant-dernier acte.",type:"drag_zone_clicks",needed:20,label:"Le grand vide final (20 clics)",win_msg:"20 clics dans rien. L'epopee touche a sa fin.",flavor:"Niveau 49 : L'avant-dernier vide"},
+  {t:"LE BOUTON FINAL",d:"Un dernier clic. Pour rien. Pour tout. Pour l'inutile.",type:"big_button",label:"LE CLIC ULTIME",clicks:1,win_msg:"TU AS TERMINE LE JEU INUTILE ! Felicitations ! Tu as accompli... rien du tout. Bravo champion !",flavor:"NIVEAU 50 : L'APOTHEOSE DE L'INUTILE"}
+];
+
+function initLevel(){
+  const lv=LEVELS[currentLevel];
+  state={clicks:0,sliderOk:false,colorsSelected:[],gridPressed:[],dragClicks:0,textVal:'',done:false};
+  document.getElementById('s-lv').textContent=currentLevel+1;
+  document.getElementById('s-ut').textContent=Math.round((currentLevel/50)*100)+'%';
+  document.getElementById('lbadge').textContent='Niveau '+(currentLevel+1)+' / 50';
+  document.getElementById('prog').style.width=Math.round((currentLevel/50)*100)+'%';
+  document.getElementById('flavor').textContent=lv.flavor;
+  document.getElementById('msg').textContent='';
+  document.getElementById('btn-prev').style.display=currentLevel>0?'':'none';
+  renderZone();
+}
+
+function renderZone(){
+  const lv=LEVELS[currentLevel];
+  const z=document.getElementById('zone');
+  z.innerHTML='<div class="ztitle">'+lv.t+'</div><div class="zdesc">'+lv.d+'</div><div class="inutile-widget" id="widget"></div>';
+  const w=document.getElementById('widget');
+  if(lv.type==='big_button'){
+    const cnt=document.createElement('div');cnt.className='click-cnt';cnt.id='click-cnt';
+    cnt.textContent=lv.clicks>1?'0 / '+lv.clicks+' clics':'';
+    const b=document.createElement('button');b.className='big-btn';b.textContent=lv.label;
+    b.onclick=()=>{if(state.done)return;state.clicks++;totalClics++;document.getElementById('s-cl').textContent=totalClics;if(lv.clicks>1)cnt.textContent=Math.min(state.clicks,lv.clicks)+' / '+lv.clicks+' clics';if(state.clicks>=lv.clicks)winLevel();};
+    w.appendChild(cnt);w.appendChild(b);
+  } else if(lv.type==='slider'){
+    const row=document.createElement('div');row.className='slider-row';row.style='width:90%';
+    const lbl=document.createElement('label');lbl.textContent=lv.label;
+    const inp=document.createElement('input');inp.type='range';inp.min=lv.min;inp.max=lv.max;inp.value=Math.round((lv.min+lv.max)/2);inp.step='1';
+    const val=document.createElement('span');val.textContent=inp.value;
+    const hint=document.createElement('div');hint.className='hint-text';
+    if(lv.target!==undefined)hint.textContent='Cible : '+lv.target;
+    inp.oninput=()=>{val.textContent=inp.value;if(lv.target_any){winLevel();}else if(lv.target!==undefined){if(Math.abs(parseInt(inp.value)-lv.target)<=lv.tolerance)winLevel();}};
+    row.appendChild(lbl);row.appendChild(inp);row.appendChild(val);w.appendChild(row);w.appendChild(hint);
+  } else if(lv.type==='colors'||lv.type==='colors_multi'){
+    const needed=lv.type==='colors'?1:(lv.needed||lv.colors.length);
+    const hint=document.createElement('div');hint.className='hint-text';hint.style='margin-bottom:8px';
+    hint.textContent=needed>1?'0 / '+needed+' selectionne(e)s':'Clique sur une couleur';
+    const grid=document.createElement('div');grid.style='display:flex;flex-wrap:wrap;gap:8px;justify-content:center';
+    lv.colors.forEach((c,i)=>{const s=document.createElement('div');s.className='color-swatch';s.style.background=c;s.onclick=()=>{if(state.done)return;totalClics++;document.getElementById('s-cl').textContent=totalClics;if(!state.colorsSelected.includes(i)){state.colorsSelected.push(i);s.style.border='3px solid #333';}hint.textContent=state.colorsSelected.length+' / '+needed+' selectionne(e)s';if(state.colorsSelected.length>=needed)winLevel();};grid.appendChild(s);});
+    w.appendChild(hint);w.appendChild(grid);
+  } else if(lv.type==='typing'||lv.type==='typing_exact'){
+    const inp=document.createElement('input');inp.type='text';inp.className='typing-input';inp.placeholder=lv.placeholder||'Ecris ici...';
+    const hint=document.createElement('div');hint.className='hint-text';
+    if(lv.type==='typing')hint.textContent='Min '+lv.min_chars+' caracteres';
+    else hint.textContent='Ecris exactement : "'+lv.exact+'"';
+    const btn=document.createElement('button');btn.textContent='Valider';btn.className='ok';
+    btn.onclick=()=>{if(state.done)return;const v=inp.value.trim();if(lv.type==='typing'&&v.length>=lv.min_chars)winLevel();else if(lv.type==='typing_exact'&&v.toLowerCase()===lv.exact)winLevel();else{hint.textContent='Pas encore...';hint.style.color='#e24b4a';}};
+    w.appendChild(inp);w.appendChild(hint);w.appendChild(btn);
+  } else if(lv.type==='drag_zone'||lv.type==='drag_zone_clicks'){
+    const needed=lv.type==='drag_zone'?1:(lv.needed||1);
+    const cnt=document.createElement('div');cnt.className='hint-text';cnt.style='margin-bottom:6px';
+    cnt.textContent=needed>1?'0 / '+needed+' clics':'Cliquer dans la zone';
+    const dz=document.createElement('div');dz.className='drag-zone';dz.textContent=lv.label||'Zone vide';
+    dz.onclick=()=>{if(state.done)return;state.dragClicks++;totalClics++;document.getElementById('s-cl').textContent=totalClics;cnt.textContent=Math.min(state.dragClicks,needed)+' / '+needed+' clics';if(state.dragClicks>=needed)winLevel();};
+    w.appendChild(cnt);w.appendChild(dz);
+  } else if(lv.type==='grid_buttons'){
+    const total=lv.cols*lv.rows;state.gridPressed=new Array(total).fill(false);
+    const cnt=document.createElement('div');cnt.className='hint-text';cnt.style='margin-bottom:6px';cnt.textContent='0 / '+total+' boutons';
+    const grid=document.createElement('div');grid.style='display:grid;grid-template-columns:repeat('+lv.cols+',1fr);gap:5px;width:90%';
+    for(let i=0;i<total;i++){const b=document.createElement('button');b.textContent=i+1;b.style='padding:8px 4px;font-size:12px';b.onclick=()=>{if(state.done||state.gridPressed[i])return;state.gridPressed[i]=true;totalClics++;document.getElementById('s-cl').textContent=totalClics;b.style.background='#e8f5f0';b.style.color='#0f6e56';b.disabled=true;const done=state.gridPressed.filter(Boolean).length;cnt.textContent=done+' / '+total+' boutons';if(done>=total)winLevel();};grid.appendChild(b);}
+    w.appendChild(cnt);w.appendChild(grid);
+  }
+}
+
+function winLevel(){
+  if(state.done)return;state.done=true;
+  const lv=LEVELS[currentLevel];
+  if(!levelsDone[currentLevel]){levelsDone[currentLevel]=true;trophies++;document.getElementById('s-tr').textContent=trophies;}
+  document.getElementById('s-ut').textContent=Math.round(((currentLevel+1)/50)*100)+'%';
+  document.getElementById('prog').style.width=Math.round(((currentLevel+1)/50)*100)+'%';
+  document.getElementById('msg').textContent=lv.win_msg;
+  if(currentLevel===49){document.getElementById('zone').innerHTML='<div class="award">&#127942;</div><div style="text-align:center;font-size:17px;font-weight:600;margin-bottom:10px">FELICITATIONS !</div><div style="text-align:center;font-size:13px;color:#666">Tu as termine les 50 niveaux du jeu le plus inutile du monde.<br>Tu as clique <strong>'+totalClics+'</strong> fois pour ne rien accomplir.<br><br>Tu es une legende.</div>';return;}
+  setTimeout(()=>{currentLevel++;initLevel();},1400);
+}
+
+function prevLevel(){if(currentLevel>0){currentLevel--;initLevel();}}
+function skipLevel(){if(currentLevel<49){currentLevel++;initLevel();}}
+
+initLevel();
+</script>
+</body>
+</html>
